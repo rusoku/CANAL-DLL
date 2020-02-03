@@ -302,6 +302,7 @@ private:
 			_Inout_ PDEVICE_DATA
 		);
 
+	void TerminateThreads(void);
 
 public:
 

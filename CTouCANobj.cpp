@@ -392,6 +392,7 @@ bool CTouCANObj::Open(const char * szFileName, unsigned long flags, bool start) 
 	if (TouCAN_init() == FALSE)
 	{
 		//wprintf(L"TouCAN_init ERROR\n");
+		TerminateThreads();
 		CloseDevice(&deviceData);
 		m_bOpen = FALSE;
 		return FALSE;
@@ -403,6 +404,7 @@ bool CTouCANObj::Open(const char * szFileName, unsigned long flags, bool start) 
 		if (TouCAN_start() == FALSE)
 		{
 			//wprintf(L"TouCAN_start ERROR\n");
+			TerminateThreads();
 			CloseDevice(&deviceData);
 			m_bOpen = FALSE;
 			return FALSE;
@@ -410,6 +412,34 @@ bool CTouCANObj::Open(const char * szFileName, unsigned long flags, bool start) 
 	}
 
 	return TRUE;
+}
+
+//////////////////////////////////////////////////////////////////////
+// TerminateThreads
+//
+void CTouCANObj::TerminateThreads(void) {
+	DWORD rv = ERROR_INVALID_PARAMETER;
+
+	// Terminate Rx Thread
+	m_bRunRxTask = FALSE;
+	// Terminate Rx Thread
+	m_bRunTxTask = FALSE;
+
+	while (true)
+	{
+		GetExitCodeThread(m_hTreadReceive, &rv);
+		if (rv != STILL_ACTIVE)
+			break;
+	}
+	//wprintf(L"GetExitCodeReceiveThread=%X\n", rv);
+
+	while (true)
+	{
+		GetExitCodeThread(m_hTreadTransmit, &rv);
+		if (rv != STILL_ACTIVE)
+			break;
+	}
+	//wprintf(L"GetExitCodeTransmitThread=%X\n", rv);
 }
 
 //////////////////////////////////////////////////////////////////////
@@ -427,29 +457,10 @@ bool CTouCANObj::Close(void){
 
 	Sleep(100);
 
-	// Terminate Rx Thread
-	m_bRunRxTask = FALSE;
-	// Terminate Rx Thread
-	m_bRunTxTask = FALSE;
-
 	m_bOpen = FALSE;
 	m_bRun = FALSE;
 
-	while (true)
-	{
-		GetExitCodeThread(m_hTreadReceive, &rv);
-		if (rv != STILL_ACTIVE)
-			break;
-	}
-	//wprintf(L"GetExitCodeReceiveThread=%X\n", rv);
-
-	while (true)
-	{
-		GetExitCodeThread(m_hTreadTransmit, &rv);
-		if (rv != STILL_ACTIVE)
-			break;
-	}
-	//wprintf(L"GetExitCodeTransmitThread=%X\n", rv);
+	TerminateThreads();
 
 	CloseDevice(&deviceData);
 
