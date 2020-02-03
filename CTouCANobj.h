@@ -51,7 +51,7 @@
 
 #define		TouCAN_RESET								0x00 // OK
 #define		TouCAN_CAN_INTERFACE_INIT					0x01 // OK
-#define		TouCAN_CAN_INTERFACE_DEINIT    			0x02 // OK
+#define		TouCAN_CAN_INTERFACE_DEINIT    				0x02 // OK
 #define		TouCAN_CAN_INTERFACE_START					0x03 // OK
 #define		TouCAN_CAN_INTERFACE_STOP					0x04 // OK
 
@@ -62,56 +62,56 @@
 #define		TouCAN_FILTER_EXT_REJECT_ALL			    0x08
 
 #define		TouCAN_SET_FILTER_STD_LIST_MASK   			0x09
-#define		TouCAN_SET_FILTER_EXT_LIST_MASK			0x0A
+#define		TouCAN_SET_FILTER_EXT_LIST_MASK				0x0A
 #define		TouCAN_GET_FILTER_STD_LIST_MASK   			0x0B
-#define		TouCAN_GET_FILTER_EXT_LIST_MASK			0x0C
+#define		TouCAN_GET_FILTER_EXT_LIST_MASK				0x0C
 
 #define		TouCAN_GET_CAN_ERROR_STATUS          		0x0D  // OK   - CAN_Error_Status(&hcan1)
 #define		TouCAN_CLEAR_CAN_ERROR_STATUS		        0x0D  // NOK  - CAN_Error_Status(&hcan1) // nenusistato
 #define		TouCAN_GET_STATISTICS						0x0E  // OK (VSCP CAN state)
-#define     TouCAN_CLEAR_STATISTICS					0x0F  // OK (VSCP CAN state)
-#define		TouCAN_GET_HARDWARE_VERSION				0x10  // OK
-#define		TouCAN_GET_FIRMWARE_VERSION				0x11  // OK
+#define     TouCAN_CLEAR_STATISTICS						0x0F  // OK (VSCP CAN state)
+#define		TouCAN_GET_HARDWARE_VERSION					0x10  // OK
+#define		TouCAN_GET_FIRMWARE_VERSION					0x11  // OK
 #define		TouCAN_GET_BOOTLOADER_VERSION				0x12  // OK
 #define		TouCAN_GET_SERIAL_NUMBER					0x13  // OK
 //#define		TouCAN_SET_SERIAL_NUMBER					0x14  
 //#define		TouCAN_RESET_SERIAL_NUMBER					0x15  
 #define		TouCAN_GET_VID_PID							0x16  // OK
 #define		TouCAN_GET_DEVICE_ID						0x17  // OK
-#define		TouCAN_GET_VENDOR  						0x18  // OK
+#define		TouCAN_GET_VENDOR  							0x18  // OK
 
 #define		TouCAN_GET_LAST_ERROR_CODE					0x20  // HAL return error code	8bit // OK
 #define		TouCAN_CLEAR_LAST_ERROR_CODE				0x21  // HAL return error code  8bit // OK
-#define		TouCAN_GET_CAN_INTERFACE_STATE 			0x22  // HAL_CAN_GetState(&hcan1)		8bit   // OK
+#define		TouCAN_GET_CAN_INTERFACE_STATE 				0x22  // HAL_CAN_GetState(&hcan1)		8bit   // OK
 #define		TouCAN_CLEAR_CAN_INTERFACE_STATE 			0x23  // HAL_CAN_GetState(&hcan1); ----------------------------- NOK
-#define		TouCAN_GET_CAN_INTERFACE_ERROR_CODE	    0x24  // hcan->ErrorCode;	32bit    // OK  HAL_CAN_GetError(&hcan1);
+#define		TouCAN_GET_CAN_INTERFACE_ERROR_CODE			0x24  // hcan->ErrorCode;	32bit    // OK  HAL_CAN_GetError(&hcan1);
 #define		TouCAN_CLEAR_CAN_INTERFACE_ERROR_CODE	    0x25  // hcan->ErrorCode;	32bit    // OK HAL_CAN_GetError(&hcan1);
 
-#define     TouCAN_SET_CAN_INTERFACE_DELAY             0x26  // OK
-#define     TouCAN_GET_CAN_INTERFACE_DELAY             0x27  // OK
+#define     TouCAN_SET_CAN_INTERFACE_DELAY              0x26  // OK
+#define     TouCAN_GET_CAN_INTERFACE_DELAY              0x27  // OK
 
 ///////////////////////////////////////////////////////
 // TouCAN  return error codes (HAL)   
 
 #define     TouCAN_RETVAL_OK		                    0x00
-#define     TouCAN_RETVAL_ERROR                        0x01
+#define     TouCAN_RETVAL_ERROR                         0x01
 #define     TouCAN_RETVAL_BUSY				            0x02   
-#define     TouCAN_RETVAL_TIMEOUT                      0x03
+#define     TouCAN_RETVAL_TIMEOUT                       0x03
 
 //////////////////////////////////////////////////////
 //  TouCAN init string FLAGS (32 bit)
 
 #define		TouCAN_ENABLE_SILENT_MODE					0x00000001 //	 1
-#define		TouCAN_ENABLE_LOOPBACK_MODE				0x00000002 //	 2
+#define		TouCAN_ENABLE_LOOPBACK_MODE					0x00000002 //	 2
 #define		TouCAN_DISABLE_RETRANSMITION				0x00000004 //	 4
-#define		TouCAN_ENABLE_AUTOMATIC_WAKEUP_MODE		0x00000008 //	 8
-#define		TouCAN_ENABLE_AUTOMATIC_BUS_OFF			0x00000010 //	16
+#define		TouCAN_ENABLE_AUTOMATIC_WAKEUP_MODE			0x00000008 //	 8
+#define		TouCAN_ENABLE_AUTOMATIC_BUS_OFF				0x00000010 //	16
 #define		TouCAN_ENABLE_TTM_MODE						0x00000020 //	32
 #define		TouCAN_ENABLE_RX_FIFO_LOCKED_MODE			0x00000040 //	64
 #define		TouCAN_ENABLE_TX_FIFO_PRIORITY		 		0x00000080 //  128
 
-#define     TouCAN_ENABLE_STATUS_MESSAGES              0x00000100 //  256
-#define     TouCAN_ENABLE_TIMESTAMP_DELAY              0x00000200 //  512
+#define     TouCAN_ENABLE_STATUS_MESSAGES               0x00000100 //  256
+#define     TouCAN_ENABLE_TIMESTAMP_DELAY               0x00000200 //  512
 
 /////////////////////////////////////////////////////
 // TouCAN HAL return error codes 

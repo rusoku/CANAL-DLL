@@ -53,11 +53,11 @@ CTouCANObj::CTouCANObj()
 	m_transmitDataGetEvent = CreateEvent(NULL, TRUE, FALSE, NULL);  // default: not signaled	
 
 #ifdef DEBUG_CANAL
-	//if (!AllocConsole())
-  //{
-	//	MessageBox(NULL, L"The console window was not created", NULL, MB_ICONEXCLAMATION);
-	//}
-	//freopen_s(&fp, "CONOUT$", "w", stdout); // <=-- DEBUG
+	if (!AllocConsole())
+	{
+    	MessageBox(NULL, L"The console window was not created", NULL, MB_ICONEXCLAMATION);
+	}
+	freopen_s(&fp, "CONOUT$", "w", stdout); // <=-- DEBUG
 	//fopen_s(&log,"log.txt", "w+");
 #endif // DEBUG_CANAL
 }
@@ -84,9 +84,9 @@ CTouCANObj::~CTouCANObj()
 #ifdef DEBUG_CANAL
 //	fclose(fp);
 	//fclose(log);
-//	FreeConsole();
+	FreeConsole();
 	//if (!FreeConsole())
-		//MessageBox(NULL, L"Failed to free the console!", NULL, MB_ICONEXCLAMATION);
+	//	MessageBox(NULL, L"Failed to free the console!", NULL, MB_ICONEXCLAMATION);
 #endif
 }
 
@@ -138,12 +138,12 @@ bool CTouCANObj::Open(const char * szFileName, unsigned long flags, bool start) 
 
 	// Convert to integer "Device ID"
 	m_DeviceId = (INT16)wcstol(szDrvParamsToken, &pEnd, 10);
-//	wprintf(L"m_DeviceId=%d\n", m_DeviceId);
+	//	wprintf(L"m_DeviceId=%d\n", m_DeviceId);
 
-//------------------ serial number ------------------
+	//------------------ serial number ------------------
 
-	// Looking for "serial number"
-	//szDrvParamsToken = wcstok_s(szDrvParams, L";", &token);
+		// Looking for "serial number"
+		//szDrvParamsToken = wcstok_s(szDrvParams, L";", &token);
 	szDrvParamsToken = wcstok_s(NULL, L";", &token);
 	//wprintf(L"SerialNumber=%s\n", szDrvParamsToken);
 
@@ -159,9 +159,9 @@ bool CTouCANObj::Open(const char * szFileName, unsigned long flags, bool start) 
 	if ((StringCbCopy(m_SerialNumber, sizeof(m_SerialNumber), szDrvParamsToken)) != S_OK)
 		return FALSE;
 
-//------------------ speed --------------------------
+	//------------------ speed --------------------------
 
-	//Looking for "speed"
+		//Looking for "speed"
 	szDrvParamsToken = wcstok_s(NULL, L";", &token);
 	//wprintf(L"String Speed=%s\n", szDrvParamsToken);
 
@@ -170,14 +170,14 @@ bool CTouCANObj::Open(const char * szFileName, unsigned long flags, bool start) 
 		return FALSE;
 
 	// Convert to integer "speed"
-	m_Speed = (INT16) wcstol(szDrvParamsToken, &pEnd, 10);
+	m_Speed = (INT16)wcstol(szDrvParamsToken, &pEnd, 10);
 	//wprintf(L"Converted Speed=%d\n", m_Speed);
 
 //------------------ ext parameters if(speed == 0) ------------------
 	if (m_Speed == 0) {
-//------------------------------ Tseg1 -------------------------------
+		//------------------------------ Tseg1 -------------------------------
 
-		//Looking for "tseg1"
+				//Looking for "tseg1"
 		szDrvParamsToken = wcstok_s(NULL, L";", &token);
 		//wprintf(L"String tseg1=%s\n", szDrvParamsToken);
 
@@ -186,7 +186,7 @@ bool CTouCANObj::Open(const char * szFileName, unsigned long flags, bool start) 
 			return FALSE;
 
 		// Convert to integer "Tseg1"
-		m_Tseg1 = (INT8) wcstol(szDrvParamsToken, &pEnd, 10);
+		m_Tseg1 = (INT8)wcstol(szDrvParamsToken, &pEnd, 10);
 		//wprintf(L"Converted Tseg1=%d\n", m_Tseg1);
 
 //---------------------------- Tseg2 ---------------------------------
@@ -200,7 +200,7 @@ bool CTouCANObj::Open(const char * szFileName, unsigned long flags, bool start) 
 			return FALSE;
 
 		// Convert to integer "Tseg2"
-		m_Tseg2 = (INT8) wcstol(szDrvParamsToken, &pEnd, 10);
+		m_Tseg2 = (INT8)wcstol(szDrvParamsToken, &pEnd, 10);
 		//wprintf(L"Converted Tseg2=%d\n", m_Tseg2);
 
 //--------------------------- Sjw -------------------------------------
@@ -214,7 +214,7 @@ bool CTouCANObj::Open(const char * szFileName, unsigned long flags, bool start) 
 			return FALSE;
 
 		// Convert to integer "Sjw"
-		m_Sjw = (INT8) wcstol(szDrvParamsToken, &pEnd, 10);
+		m_Sjw = (INT8)wcstol(szDrvParamsToken, &pEnd, 10);
 		//wprintf(L"Converted Sjw=%d\n", m_Sjw);
 
 //--------------------------- Brp -------------------------------------
@@ -228,14 +228,14 @@ bool CTouCANObj::Open(const char * szFileName, unsigned long flags, bool start) 
 			return FALSE;
 
 		// Convert to integer "Brp"
-		m_Brp = (INT16) wcstol(szDrvParamsToken, &pEnd, 10);
+		m_Brp = (INT16)wcstol(szDrvParamsToken, &pEnd, 10);
 		//wprintf(L"Converted Brp=%d\n", m_Brp);
 	}
 	else {  //if (m_Speed == 0)
 
 		// CAN base clock = 50 MHz
 
-		switch( m_Speed)
+		switch (m_Speed)
 		{
 		case	1000:
 			// 75%
@@ -294,11 +294,11 @@ bool CTouCANObj::Open(const char * szFileName, unsigned long flags, bool start) 
 			m_Sjw = 4;
 			break;
 		default:
-			return	FALSE;			
+			return	FALSE;
 		}
 	}
 
-	if((m_Tseg1 < 1) | (m_Tseg1 > 16))
+	if ((m_Tseg1 < 1) | (m_Tseg1 > 16))
 		return FALSE;
 
 	if ((m_Tseg2 < 1) | (m_Tseg2 > 8))
@@ -344,15 +344,56 @@ bool CTouCANObj::Open(const char * szFileName, unsigned long flags, bool start) 
 		return FALSE;
 	}
 
-    //  TouCAN initialisation
-	if ( TouCAN_init() == FALSE)
+	m_bOpen = TRUE;
+	m_bRun = TRUE;
+
+	// Start RX thread
+	m_bRunRxTask = TRUE;
+	m_bRunTxTask = TRUE;
+
+	if (NULL == (m_hTreadReceive = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)workThreadReceive, this, 0, NULL)))
+	{
+		return FALSE;
+	}
+
+	if (NULL == (m_hTreadTransmit = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)workThreadTransmit, this, 0, NULL)))
+	{
+		return FALSE;
+	}
+
+	SetThreadPriority(m_hTreadReceive, THREAD_PRIORITY_TIME_CRITICAL);
+	SetThreadPriority(m_hTreadTransmit, THREAD_PRIORITY_TIME_CRITICAL);
+
+	Sleep(100);
+
+	pDllList->RemoveAllNodes(&m_receiveList);
+	pDllList->RemoveAllNodes(&m_transmitList);
+
+	UINT8 state;
+	TouCAN_get_interface_state(&state);
+
+	if (state == HAL_CAN_STATE_READY)
+	{
+		//wprintf(L"state:HAL_CAN_STATE_READY\n");
+		TouCAN_stop();
+		TouCAN_deinit();
+	}
+
+	if (state == HAL_CAN_STATE_LISTENING)
+	{
+		//wprintf(L"state:HAL_CAN_STATE_LISTENING\n");
+		TouCAN_stop();
+		TouCAN_deinit();
+	}
+
+	//  TouCAN initialisation
+	if (TouCAN_init() == FALSE)
 	{
 		//wprintf(L"TouCAN_init ERROR\n");
 		CloseDevice(&deviceData);
 		m_bOpen = FALSE;
 		return FALSE;
 	}
-
 
 	//  TouCAN CAN interface start
 	if (start == TRUE)
@@ -365,26 +406,6 @@ bool CTouCANObj::Open(const char * szFileName, unsigned long flags, bool start) 
 			return FALSE;
 		}
 	}
-
-	m_bOpen = TRUE;
-	m_bRun = TRUE;
-
-	// Start RX thread
-	m_bRunRxTask = TRUE;
-	m_bRunTxTask = TRUE;
-
-	if (NULL == (m_hTreadReceive = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)workThreadReceive,	this, 0, NULL)))
-	{
-	 return FALSE;
-	}
-
-	if (NULL == (m_hTreadTransmit = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)workThreadTransmit, this, 0, NULL)))
-	{
-	  return FALSE;
-	}
-
-	SetThreadPriority(m_hTreadReceive, THREAD_PRIORITY_TIME_CRITICAL);
-	SetThreadPriority(m_hTreadTransmit, THREAD_PRIORITY_TIME_CRITICAL);
 
 	return TRUE;
 }
@@ -402,6 +423,8 @@ bool CTouCANObj::Close(void){
 	//  TouCAN initialisation
 	TouCAN_deinit();
 	
+	Sleep(100);
+
 	// Terminate Rx Thread
 	m_bRunRxTask = FALSE;
 	// Terminate Rx Thread
@@ -427,6 +450,9 @@ bool CTouCANObj::Close(void){
 	//wprintf(L"GetExitCodeTransmitThread=%X\n", rv);
 
 	CloseDevice(&deviceData);
+
+	pDllList->RemoveAllNodes(&m_receiveList);
+	pDllList->RemoveAllNodes(&m_transmitList);
 
 	return TRUE;
 }

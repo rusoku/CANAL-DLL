@@ -140,7 +140,8 @@ CTouCANObj::RetrieveDevicePath(
 		str = wcstok_s(NULL, L"#", &token);
 		str = wcstok_s(NULL, L"#", &token);
 
-		if (wcscmp(str, DeviceSerialNumber) == 0)
+		//if (wcscmp(str, DeviceSerialNumber) == 0)
+		if ((wcscmp(str, DeviceSerialNumber) == 0) || (wcscmp(L"00000000", DeviceSerialNumber) == 0) || (wcscmp(L"ED000200", DeviceSerialNumber) == 0))
 		{
 			hr = StringCbCopy(deviceData.FoundSerialNumber,
 							  sizeof(deviceData.FoundSerialNumber),
