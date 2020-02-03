@@ -2,7 +2,8 @@
  * CANAL interface DLL for RUSOKU technologies for TouCAN, TouCAN Marine, TouCAN Duo USB to CAN bus converter
  *
  * Copyright (C) 2000-2008 Ake Hedman, eurosource, <akhe@eurosource.se>
- * Copyright (C) 2020 Gediminas Simanskis (gediminas@rusoku.com), www.rusoku.com
+ * Copyright (C) 2020 Gediminas Simanskis (gediminas@rusoku.com)
+ * Copyright (C) 2020 Alexander Sorokin (sorockin@yandex.ru)
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published
@@ -35,7 +36,7 @@
 // USB request types & mask defines
 
 #define		USB_HOST_TO_DEVICE							0x00
-#define		USB_DEVICE_TO_HOST							0x80	
+#define		USB_DEVICE_TO_HOST							0x80
 
 #define		USB_REQ_TYPE_STANDARD                       0x00
 #define		USB_REQ_TYPE_CLASS                          0x20
@@ -75,8 +76,8 @@
 #define		TouCAN_GET_FIRMWARE_VERSION					0x11  // OK
 #define		TouCAN_GET_BOOTLOADER_VERSION				0x12  // OK
 #define		TouCAN_GET_SERIAL_NUMBER					0x13  // OK
-//#define		TouCAN_SET_SERIAL_NUMBER					0x14  
-//#define		TouCAN_RESET_SERIAL_NUMBER					0x15  
+//#define		TouCAN_SET_SERIAL_NUMBER					0x14
+//#define		TouCAN_RESET_SERIAL_NUMBER					0x15
 #define		TouCAN_GET_VID_PID							0x16  // OK
 #define		TouCAN_GET_DEVICE_ID						0x17  // OK
 #define		TouCAN_GET_VENDOR  							0x18  // OK
@@ -92,11 +93,11 @@
 #define     TouCAN_GET_CAN_INTERFACE_DELAY              0x27  // OK
 
 ///////////////////////////////////////////////////////
-// TouCAN  return error codes (HAL)   
+// TouCAN  return error codes (HAL)
 
 #define     TouCAN_RETVAL_OK		                    0x00
 #define     TouCAN_RETVAL_ERROR                         0x01
-#define     TouCAN_RETVAL_BUSY				            0x02   
+#define     TouCAN_RETVAL_BUSY				            0x02
 #define     TouCAN_RETVAL_TIMEOUT                       0x03
 
 //////////////////////////////////////////////////////
@@ -115,7 +116,7 @@
 #define     TouCAN_ENABLE_TIMESTAMP_DELAY               0x00000200 //  512
 
 /////////////////////////////////////////////////////
-// TouCAN HAL return error codes 
+// TouCAN HAL return error codes
 
 typedef enum
 {
@@ -127,7 +128,7 @@ typedef enum
 
 
 /////////////////////////////////////////////////////
-// TouCAN CAN interface state 
+// TouCAN CAN interface state
 
 typedef enum
 {
@@ -217,7 +218,7 @@ private:
 	bool	TouCAN_clear_interface_error_code(void);				// hcan->ErrorCode;
 	bool	TouCAN_get_interface_state(UINT8 *state);				// hcan->State;
 	bool	TouCAN_get_statistics(PCANALSTATISTICS statistics);    // VSCP get statistics
-	bool	TouCAN_clear_statistics(void);							// VSCP clear statistics	
+	bool	TouCAN_clear_statistics(void);							// VSCP clear statistics
 	bool	TouCAN_get_canal_status(canalStatus *status);
 
 	bool	TouCAN_get_hardware_version(UINT32 *ver);
@@ -274,7 +275,7 @@ private:
 	//DEVICE_DATA           deviceData;
 	USB_DEVICE_DESCRIPTOR deviceDesc;
 	BOOL                  noDevice;
-	
+
 #ifdef DEBUG_CANAL
 	FILE* fp;
 	FILE* log;
@@ -283,17 +284,17 @@ private:
 /*------------------------------------------------------------*/
 	HRESULT
 	RetrieveDevicePath(
-				_Out_bytecap_(BufLen) LPTSTR,
+				_Out_bytecap_(BufLen) LPWSTR,
 				_In_                  ULONG,
 				_Out_opt_             PBOOL,
-				_In_				  LPTSTR
+				_In_				  LPWSTR
 		);
 /*------------------------------------------------------------*/
 	HRESULT
 		OpenDevice(
 			_Out_     PDEVICE_DATA,
 			_Out_opt_ PBOOL,
-			_In_      LPTSTR
+			_In_      LPWSTR
 		);
 /*------------------------------------------------------------*/
 	VOID
@@ -322,12 +323,12 @@ public:
 
 	/*!
 		Mutex for receive queue.
-     */	
+     */
 	HANDLE  m_receiveListMutex;
 
 	/*!
 		Mutex for transmit queue.
-	*/	
+	*/
 	HANDLE  m_transmitListMutex;
 
 	// Events

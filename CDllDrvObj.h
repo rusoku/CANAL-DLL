@@ -2,7 +2,8 @@
  * CANAL interface DLL for RUSOKU technologies for TouCAN, TouCAN Marine, TouCAN Duo USB to CAN bus converter
  *
  * Copyright (C) 2000-2008 Ake Hedman, eurosource, <akhe@eurosource.se>
- * Copyright (C) 2020 Gediminas Simanskis (gediminas@rusoku.com), www.rusoku.com
+ * Copyright (C) 2020 Gediminas Simanskis (gediminas@rusoku.com)
+ * Copyright (C) 2020 Alexander Sorokin (sorockin@yandex.ru)
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published
@@ -23,7 +24,7 @@
 
 #define DLL_MAIN_VERSION					1
 #define DLL_MINOR_VERSION					0
-#define DLL_SUB_VERSION				        1
+#define DLL_SUB_VERSION				        2
 
 // This is the vendor string - Change to your own value
 #define CANAL_DLL_VENDOR "Rusoku Technologijos UAB, Lithuania, http://www.rusoku.com"
@@ -85,7 +86,7 @@ public:
 	CTouCANObj *m_drvObjArray[CANAL_TouCAN_DRIVER_MAX_OPEN];
 
 	/// Mutex for open/close
-#ifdef WIN32	
+#ifdef WIN32
 	HANDLE m_objMutex;
 #else
 	pthread_mutex_t m_objMutex;

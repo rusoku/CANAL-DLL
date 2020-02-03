@@ -2,7 +2,8 @@
  * CANAL interface DLL for RUSOKU technologies for TouCAN, TouCAN Marine, TouCAN Duo USB to CAN bus converter
  *
  * Copyright (C) 2000-2008 Ake Hedman, eurosource, <akhe@eurosource.se>
- * Copyright (C) 2020 Gediminas Simanskis (gediminas@rusoku.com), www.rusoku.com
+ * Copyright (C) 2020 Gediminas Simanskis (gediminas@rusoku.com)
+ * Copyright (C) 2020 Alexander Sorokin (sorockin@yandex.ru)
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published
@@ -24,26 +25,52 @@
 ///////////////////////////////////////////////////////////////
 // WinUSB  RetrieveDevicePath
 
+/* Workaround for some ancient systems (prior to Windows 7) that don't have
+   CM_MapCrToWin32Err. */
+
+static DWORD WINAPI CM_MapCrToWin32Err_stub(CONFIGRET CmReturnCode, WORD DefaultErr) {
+
+	return DefaultErr;
+}
+
+static DWORD MyCM_MapCrToWin32Err(CONFIGRET CmReturnCode, DWORD DefaultErr) {
+	typedef DWORD (*WINAPI CM_MapCrToWin32Err_type)
+		(CONFIGRET CmReturnCode, WORD DefaultErr);
+	static CM_MapCrToWin32Err_type CM_MapCrToWin32Err_impl = 0;
+
+	if (!CM_MapCrToWin32Err_impl) {
+		CM_MapCrToWin32Err_impl = (CM_MapCrToWin32Err_type)GetProcAddress(
+			GetModuleHandle(L"cfgmgr32.dll"),
+			"CM_MapCrToWin32Err");
+
+		if (!CM_MapCrToWin32Err_impl)
+			CM_MapCrToWin32Err_impl = (CM_MapCrToWin32Err_type)CM_MapCrToWin32Err_stub;
+	}
+
+	return CM_MapCrToWin32Err_impl(CmReturnCode, DefaultErr);
+}
+
+
 HRESULT
 CTouCANObj::RetrieveDevicePath(
-	_Out_bytecap_(BufLen) LPTSTR DevicePath,
+	_Out_bytecap_(BufLen) LPWSTR DevicePath,
 	_In_                  ULONG  BufLen,
 	_Out_opt_             PBOOL  FailureDeviceNotFound, // noDevice
-	_In_				  LPTSTR DeviceSerialNumber // GS
+	_In_				  LPWSTR DeviceSerialNumber // GS
 
 )
 {
 	CONFIGRET  cr = CR_SUCCESS;
 	HRESULT    hr = S_OK;
-	LPTSTR     DeviceInterfaceList = NULL;
-	LPTSTR     CurrentInterface = NULL;
+	LPWSTR     DeviceInterfaceList = NULL;
+	LPWSTR     CurrentInterface = NULL;
 	ULONG      DeviceInterfaceListLength = 0;
 
 	//======== GS =====
 
-	LPTSTR	TmpDeviceInterfaceList = 0;
-	LPTSTR  str = 0;
-	LPTSTR  token = 0;
+	LPWSTR	TmpDeviceInterfaceList = 0;
+	LPWSTR  str = 0;
+	LPWSTR  token = 0;
 
 	if (NULL != FailureDeviceNotFound) {
 
@@ -63,17 +90,17 @@ CTouCANObj::RetrieveDevicePath(
 
 	do {
 
-		cr = CM_Get_Device_Interface_List_Size(&DeviceInterfaceListLength,
+		cr = CM_Get_Device_Interface_List_SizeW(&DeviceInterfaceListLength,
 			(LPGUID)&GUID_DEVINTERFACE_WinUsbF4FS1,
 			NULL,
 			CM_GET_DEVICE_INTERFACE_LIST_PRESENT);
 
 		if (cr != CR_SUCCESS) {
-			hr = HRESULT_FROM_WIN32(CM_MapCrToWin32Err(cr, ERROR_INVALID_DATA));
+			hr = HRESULT_FROM_WIN32(MyCM_MapCrToWin32Err(cr, ERROR_INVALID_DATA));
 			break;
 		}
 
-		DeviceInterfaceList = (PTSTR)HeapAlloc(GetProcessHeap(),
+		DeviceInterfaceList = (LPWSTR)HeapAlloc(GetProcessHeap(),
 			HEAP_ZERO_MEMORY,
 			DeviceInterfaceListLength * sizeof(WCHAR));
 
@@ -82,7 +109,7 @@ CTouCANObj::RetrieveDevicePath(
 			break;
 		}
 
-		cr = CM_Get_Device_Interface_List((LPGUID)&GUID_DEVINTERFACE_WinUsbF4FS1,
+		cr = CM_Get_Device_Interface_ListW((LPGUID)&GUID_DEVINTERFACE_WinUsbF4FS1,
 			NULL,
 			DeviceInterfaceList,
 			DeviceInterfaceListLength,
@@ -92,7 +119,7 @@ CTouCANObj::RetrieveDevicePath(
 			HeapFree(GetProcessHeap(), 0, DeviceInterfaceList);
 
 			if (cr != CR_BUFFER_SMALL) {
-				hr = HRESULT_FROM_WIN32(CM_MapCrToWin32Err(cr, ERROR_INVALID_DATA));
+				hr = HRESULT_FROM_WIN32(MyCM_MapCrToWin32Err(cr, ERROR_INVALID_DATA));
 			}
 		}
 
@@ -105,7 +132,7 @@ CTouCANObj::RetrieveDevicePath(
 	//
 	// If the interface list is empty, no devices were found.
 	//
-	if (*DeviceInterfaceList == TEXT('\0'))
+	if (*DeviceInterfaceList == L'\0')
 	{
 		if (NULL != FailureDeviceNotFound)
 		{
@@ -119,7 +146,7 @@ CTouCANObj::RetrieveDevicePath(
 
 	//Isskiriam laikina string atminti s/n paieskai
 
-	TmpDeviceInterfaceList = (LPTSTR)HeapAlloc(GetProcessHeap(),
+	TmpDeviceInterfaceList = (LPWSTR)HeapAlloc(GetProcessHeap(),
 		HEAP_ZERO_MEMORY,
 		MAX_PATH * sizeof(WCHAR));
 
@@ -133,8 +160,8 @@ CTouCANObj::RetrieveDevicePath(
 		*CurrentInterface;
 		CurrentInterface += wcslen(CurrentInterface) + 1) {
 
-		StringCbCopy(TmpDeviceInterfaceList,
-			wcslen(CurrentInterface),
+		wcscpy_s(TmpDeviceInterfaceList,
+			MAX_PATH,
 			CurrentInterface);
 
 		str = wcstok_s(TmpDeviceInterfaceList, L"#", &token);
@@ -144,7 +171,7 @@ CTouCANObj::RetrieveDevicePath(
 		//if (wcscmp(str, DeviceSerialNumber) == 0)
 		if ((wcscmp(str, DeviceSerialNumber) == 0) || (wcscmp(L"00000000", DeviceSerialNumber) == 0) || (wcscmp(L"ED000200", DeviceSerialNumber) == 0))
 		{
-			hr = StringCbCopy(deviceData.FoundSerialNumber,
+			hr = wcscpy_s(deviceData.FoundSerialNumber,
 							  sizeof(deviceData.FoundSerialNumber),
 				              str);
 			break;
@@ -173,7 +200,7 @@ CTouCANObj::RetrieveDevicePath(
 	// Give path of the first found device interface instance to the caller. CM_Get_Device_Interface_List ensured
 	// the instance is NULL-terminated.
 	//
-	hr = StringCbCopy(DevicePath,
+	hr = wcscpy_s(DevicePath,
 		BufLen,
 		CurrentInterface);
 
@@ -189,7 +216,7 @@ HRESULT
 CTouCANObj::OpenDevice(
 	_Out_     PDEVICE_DATA DeviceData,
 	_Out_opt_ PBOOL        FailureDeviceNotFound,
-	_In_	               LPTSTR DeviceSerialNumber
+	_In_	               LPWSTR DeviceSerialNumber
 )
 {
 	HRESULT hr = S_OK;
@@ -208,7 +235,7 @@ CTouCANObj::OpenDevice(
 		return hr;
 	}
 
-	DeviceData->DeviceHandle = CreateFile(DeviceData->DevicePath,
+	DeviceData->DeviceHandle = CreateFileW(DeviceData->DevicePath,
 		GENERIC_WRITE | GENERIC_READ,
 		FILE_SHARE_WRITE | FILE_SHARE_READ,
 		NULL,
