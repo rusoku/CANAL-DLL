@@ -34,7 +34,7 @@ static DWORD WINAPI CM_MapCrToWin32Err_stub(CONFIGRET CmReturnCode, WORD Default
 }
 
 static DWORD MyCM_MapCrToWin32Err(CONFIGRET CmReturnCode, DWORD DefaultErr) {
-	typedef DWORD (*WINAPI CM_MapCrToWin32Err_type)
+	typedef DWORD (WINAPI * CM_MapCrToWin32Err_type)
 		(CONFIGRET CmReturnCode, WORD DefaultErr);
 	static CM_MapCrToWin32Err_type CM_MapCrToWin32Err_impl = 0;
 
