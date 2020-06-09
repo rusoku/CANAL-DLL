@@ -4,6 +4,7 @@
  * Copyright (C) 2000-2008 Ake Hedman, eurosource, <akhe@eurosource.se>
  * Copyright (C) 2020 Gediminas Simanskis (gediminas@rusoku.com)
  * Copyright (C) 2020 Alexander Sorokin (sorockin@yandex.ru)
+ * Copyright (C) 2020 Uwe Vogt (uwe.vogt@uv-software.de)
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published
@@ -24,7 +25,7 @@
 
 #define DLL_MAIN_VERSION					1
 #define DLL_MINOR_VERSION					0
-#define DLL_SUB_VERSION				        2
+#define DLL_SUB_VERSION				        3
 
 // This is the vendor string - Change to your own value
 #define CANAL_DLL_VENDOR "Rusoku Technologijos UAB, Lithuania, http://www.rusoku.com"
