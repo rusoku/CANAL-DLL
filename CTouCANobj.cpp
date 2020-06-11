@@ -4,6 +4,7 @@
  * Copyright (C) 2000-2008 Ake Hedman, eurosource, <akhe@eurosource.se>
  * Copyright (C) 2020 Gediminas Simanskis (gediminas@rusoku.com)
  * Copyright (C) 2020 Alexander Sorokin (sorockin@yandex.ru)
+ * Copyright (C) 2020 Uwe Vogt (uwe.vogt@uv-software.de)
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published
@@ -1140,6 +1141,10 @@ int CTouCANObj::InterfaceStop(void)
 	if (TouCAN_stop() != TRUE)
 		return	CANAL_ERROR_COMMUNICATION;
 
-	return CANAL_ERROR_SUCCESS;
+    // signal blocking reception event
+    if (m_receiveDataEvent != NULL)
+        (void)SetEvent(m_receiveDataEvent);
+    
+    return CANAL_ERROR_SUCCESS;
 }
 
