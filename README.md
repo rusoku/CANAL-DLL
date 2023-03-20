@@ -1,5 +1,5 @@
 # CANAL-DLL
-CANAL DLL for TouCAN USB to CAN bus converter
+VSCP CANAL DLL for TouCAN USB to CAN bus converter
 
 
 Version 1.0.2.RC1
