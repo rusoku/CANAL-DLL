@@ -23,30 +23,23 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
 
-#include "stdafx.h"
-#include "CDllList.h"
-
-
-CDllList::CDllList()
-{
-	
-}
-
-
-CDllList::~CDllList()
-{
-	
-}
-
+#include "windows.h"
+#include "include/CDllList.h"
 
 
 ///////////////////////////////////////////////////////////////////////////////
 // init_list
 
+CDllList::CDllList(){
+}
+
+CDllList::~CDllList(){
+}
+
 void CDllList::Init(struct DoubleLinkedList *pdll, unsigned char nSort)
 {
-	pdll->pHead = NULL;
-	pdll->pTail = NULL;
+	pdll->pHead = nullptr;
+	pdll->pTail = nullptr;
 	pdll->nSortOrder = nSort;
 	pdll->nCount = 0;
 };
@@ -56,20 +49,20 @@ void CDllList::Init(struct DoubleLinkedList *pdll, unsigned char nSort)
 
 BOOL CDllList::AddNodeHead(struct DoubleLinkedList *pdll, struct dllnode *pInsertNode)
 {
-	if (NULL == pdll) return FALSE;
-	if (NULL == pInsertNode) return FALSE;
+	if (nullptr == pdll) return FALSE;
+	if (nullptr == pInsertNode) return FALSE;
 
 	pInsertNode->pNext = pdll->pHead;
-	pInsertNode->pPrev = NULL;
+	pInsertNode->pPrev = nullptr;
 
 	// if there already where nodes in the list let
 	// previous node point at this one
-	if (NULL != pdll->pHead) {
+	if (nullptr != pdll->pHead) {
 		pdll->pHead->pPrev = pInsertNode;
 	}
 
 	// If this is the first node - GS
-	if (NULL == pdll->pTail) {
+	if (nullptr == pdll->pTail) {
 		pdll->pTail = pInsertNode;
 	}
 
@@ -87,20 +80,20 @@ BOOL CDllList::AddNodeHead(struct DoubleLinkedList *pdll, struct dllnode *pInser
 
 BOOL CDllList::AddNodeTail(struct DoubleLinkedList *pdll, struct dllnode *pInsertNode)
 {
-	if (NULL == pdll) return FALSE;
-	if (NULL == pInsertNode) return FALSE;
+	if (nullptr == pdll) return FALSE;
+	if (nullptr == pInsertNode) return FALSE;
 
-	pInsertNode->pNext = NULL;
+	pInsertNode->pNext = nullptr;
 	pInsertNode->pPrev = pdll->pTail;
 
 	// if there already where nodes in the list let
 	// previous node point at this one
-	if (NULL != pdll->pTail) {
+	if (nullptr != pdll->pTail) {
 		pdll->pTail->pNext = pInsertNode;
 	}
 
 	// If this is the first node
-	if (NULL == pdll->pHead) {
+	if (nullptr == pdll->pHead) {
 		pdll->pHead = pInsertNode;
 	}
 
@@ -120,11 +113,11 @@ BOOL CDllList::AddNodeBefore(struct DoubleLinkedList *pdll,
 	struct dllnode *pNode,
 	struct dllnode *pInsertNode)
 {
-	if (NULL == pdll) return FALSE;
-	if (NULL == pNode) return FALSE;
-	if (NULL == pInsertNode) return FALSE;
+	if (nullptr == pdll) return FALSE;
+	if (nullptr == pNode) return FALSE;
+	if (nullptr == pInsertNode) return FALSE;
 
-	if (NULL == pNode->pPrev) {
+	if (nullptr == pNode->pPrev) {
 		// There is no nodes before this node
 		AddNodeHead(pdll, pInsertNode);
 	}
@@ -146,11 +139,11 @@ BOOL CDllList::AddNodeAfter(struct DoubleLinkedList *pdll,
 	struct dllnode *pNode,
 	struct dllnode *pInsertNode)
 {
-	if (NULL == pdll) return FALSE;
-	if (NULL == pNode) return FALSE;
-	if (NULL == pInsertNode) return FALSE;
+	if (nullptr == pdll) return FALSE;
+	if (nullptr == pNode) return FALSE;
+	if (nullptr == pInsertNode) return FALSE;
 
-	if (NULL == pNode->pNext) {
+	if (nullptr == pNode->pNext) {
 		// There is no nodes after this one
 		AddNodeTail(pdll, pInsertNode);
 	}
@@ -173,9 +166,9 @@ BOOL CDllList::InsertNode(struct DoubleLinkedList *pdll,
 	struct dllnode *pInsertNode)
 {
 	//struct dllnode *pNode = malloc( sizeof( struct dllnode ) );
-	if (NULL == pdll) return FALSE;
-	if (NULL == pNode) return FALSE;
-	if (NULL == pInsertNode) return FALSE;
+	if (nullptr == pdll) return FALSE;
+	if (nullptr == pNode) return FALSE;
+	if (nullptr == pInsertNode) return FALSE;
 
 	// First link in the new node
 	pInsertNode->pPrev = pNode;
@@ -204,7 +197,7 @@ BOOL CDllList::AddNode(struct DoubleLinkedList *pdll, struct dllnode *pInsertNod
 	struct dllnode *pNode;
 
 
-	if (NULL == pdll) return FALSE;
+	if (nullptr == pdll) return FALSE;
 
 	if (pdll->nSortOrder == SORT_NONE) {
 		// No sorting just add as last element
@@ -213,12 +206,12 @@ BOOL CDllList::AddNode(struct DoubleLinkedList *pdll, struct dllnode *pInsertNod
 	}
 
 	if ((pdll->nSortOrder == SORT_STRING) &&
-		(NULL == pInsertNode->pstrKey)) {
+		(nullptr == pInsertNode->pstrKey)) {
 		return FALSE;
 	}
 
 	if ((pdll->nSortOrder == SORT_NUMERIC) &&
-		(NULL == pInsertNode->pKey)) {
+		(nullptr == pInsertNode->pKey)) {
 		return FALSE;
 	}
 
@@ -227,20 +220,21 @@ BOOL CDllList::AddNode(struct DoubleLinkedList *pdll, struct dllnode *pInsertNod
 	pNode = pdll->pHead;
 
 
-	if (NULL == pNode) {
+	if (nullptr == pNode) {
 		// Add to tail - last id
 		return AddNodeTail(pdll, pInsertNode);
 	}
 
 	// Search for a place to insert the new node
 
-	while (pNode != NULL) {
+	while (pNode != nullptr) {
 
-		if ((pdll->nSortOrder == SORT_STRING) &&
-			(NULL != pInsertNode->pstrKey)) {
+		if ((pdll->nSortOrder == SORT_STRING) && (pInsertNode->pstrKey != nullptr))
+        {
 			nsearchResult = strcmp(pInsertNode->pstrKey, pNode->pstrKey);
 		}
-		else if ((pdll->nSortOrder == SORT_NUMERIC)) {
+		else if (pdll->nSortOrder == SORT_NUMERIC)
+        {
 
 			if (*pInsertNode->pKey == *pNode->pKey) {
 				nsearchResult = 0;
@@ -279,29 +273,32 @@ BOOL CDllList::RemoveNode(struct DoubleLinkedList *pdll, struct dllnode *pNode)
 	struct dllnode *pNext;
 	struct dllnode *pPrev;
 
-	if (NULL == pdll) return FALSE;
-	if (NULL == pNode) return FALSE;
-
-	if (NULL != pNode) {
+	if (pdll == nullptr)
+        return FALSE;
+	if (pNode == nullptr)
+        return FALSE;
 
 		// Remove the object
-		if (NULL != pNode->pObject) {
+		if (nullptr != pNode->pObject) {
+            //auto pobj = pNode->pObject;
+            //delete pobj;
+            delete  pNode->pObject;
 			delete pNode->pObject;
-			pNode->pObject = NULL;
+			pNode->pObject = nullptr;
 		}
 
 		// Save links
 		pNext = pNode->pNext;
 		pPrev = pNode->pPrev;
 
-		if (NULL != pPrev) {
+		if (nullptr != pPrev) {
 			pPrev->pNext = pNext;
 		}
 		else {
 			pdll->pHead = pNext;
 		}
 
-		if (NULL != pNext) {
+		if (nullptr != pNext) {
 			pNext->pPrev = pPrev;
 		}
 		else {
@@ -311,7 +308,6 @@ BOOL CDllList::RemoveNode(struct DoubleLinkedList *pdll, struct dllnode *pNode)
 		// Remove the node
 		delete pNode;
 		pdll->nCount--;
-	}
 
 	// Calculate the number of elements in the list
 	GetNodeCount(pdll);
@@ -328,14 +324,14 @@ unsigned long CDllList::GetNodeCount(struct DoubleLinkedList *pdll)
 	unsigned long cnt = 0; // uint32_t
 	struct dllnode *pNode;
 
-	if (NULL == pdll) return FALSE;
+	if (nullptr == pdll) return FALSE;
 
 	pNode = pdll->pHead;
 
 	// If there is no head there is no data
-	if (NULL == pNode) return 0;
+	if (nullptr == pNode) return 0;
 
-	while (pNode != NULL) {
+	while (pNode != nullptr) {
 		cnt++;
 		pNode = pNode->pNext;
 	}
@@ -352,9 +348,9 @@ unsigned long CDllList::GetNodeCount(struct DoubleLinkedList *pdll)
 
 BOOL CDllList::RemoveAllNodes(struct DoubleLinkedList *pdll)
 {
-	if (NULL == pdll) return FALSE;
+	if (nullptr == pdll) return FALSE;
 
-	while (NULL != pdll->pHead) {
+	while (nullptr != pdll->pHead) {
 		RemoveNode(pdll, pdll->pTail);
 	}
 
@@ -372,14 +368,14 @@ BOOL CDllList::RemoveAllNodes(struct DoubleLinkedList *pdll)
 struct dllnode* CDllList::FindNodeFromID(struct DoubleLinkedList *pdll,
 	ULONG nID)
 {
-	struct dllnode *pRV = NULL;
+	struct dllnode *pRV = nullptr;
 	struct dllnode *pNode;
 
-	if (NULL == pdll) return FALSE;
+	if (nullptr == pdll) return FALSE;
 
 	pNode = pdll->pHead;
 
-	while (pNode != NULL) {
+	while (pNode != nullptr) {
 		if (nID == *pNode->pKey) {
 			pRV = pNode;
 			break;
@@ -396,14 +392,14 @@ struct dllnode* CDllList::FindNodeFromID(struct DoubleLinkedList *pdll,
 struct dllnode* CDllList::FindNodeFromString(struct DoubleLinkedList *pdll,
 	char * strID)
 {
-	struct dllnode *pRV = NULL;
+	struct dllnode *pRV = nullptr;
 	struct dllnode *pNode;
 
-	if (NULL == pdll) return FALSE;
+	if (nullptr == pdll) return FALSE;
 
 	pNode = pdll->pHead;
 
-	while (pNode != NULL) {
+	while (pNode != nullptr) {
 		if (0 == strcmp(strID, pNode->pstrKey)) {
 			pRV = pNode;
 			break;
@@ -414,4 +410,3 @@ struct dllnode* CDllList::FindNodeFromString(struct DoubleLinkedList *pdll,
 
 	return pRV;
 }
-

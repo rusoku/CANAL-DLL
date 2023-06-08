@@ -23,21 +23,9 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
 
-#include "stdafx.h"
-#include "CDllDrvObj.h"
-
-
-#ifdef WIN32
-
-#else
-
-void _init() __attribute__((constructor));
-void _fini() __attribute__((destructor));
-
-void _init() { printf("initializing\n"); }
-void _fini() { printf("finishing\n"); }
-
-#endif
+#include "windows.h"
+#include "include/CDllDrvObj.h"
+#include "include/canal_macro.h"
 
 /////////////////////////////////////////////////////////////////////////////
 // CDllDrvObj
@@ -48,15 +36,13 @@ void _fini() { printf("finishing\n"); }
 CDllDrvObj::CDllDrvObj()
 {
 	m_instanceCounter = 0;
-#ifdef WIN32
-	m_objMutex = CreateMutex(NULL, true, NULL /*L"__CANAL_IXXATVCI_MUTEX__"*/);
-#else
-	pthread_mutex_init(&m_objMutex, NULL);
-#endif
+
+	m_objMutex = CreateMutex(nullptr, true, nullptr);
 
 	// Init the driver array
-	for (int i = 0; i<CANAL_TouCAN_DRIVER_MAX_OPEN; i++) {
-		m_drvObjArray[i] = NULL;
+	for (int i = 0; i<CANAL_TouCAN_DRIVER_MAX_OPEN; i++)
+    {
+		m_drvObjArray[i] = nullptr;
 	}
 
 	UNLOCK_MUTEX(m_objMutex);
@@ -70,27 +56,22 @@ CDllDrvObj::~CDllDrvObj()
 	for (int i = 0; i<CANAL_TouCAN_DRIVER_MAX_OPEN; i++)
 	{
 
-		if (NULL == m_drvObjArray[i])
+		if (nullptr == m_drvObjArray[i])
 		{
 
 			CTouCANObj *pdrvObj = GetDriverObject(i);
 
-			if (NULL != pdrvObj)
+			if (nullptr != pdrvObj)
 			{
 				pdrvObj->Close();
 				delete m_drvObjArray[i];
-				m_drvObjArray[i] = NULL;
+				m_drvObjArray[i] = nullptr;
 			}
 		}
 	}
 
 	UNLOCK_MUTEX(m_objMutex);
-
-#ifdef WIN32
 	CloseHandle(m_objMutex);
-#else	
-	pthread_mutex_destroy(&m_objMutex);
-#endif
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -112,7 +93,7 @@ long CDllDrvObj::AddDriverObject(CTouCANObj *pdrvObj)
 
 	for (int i = 0; i<CANAL_TouCAN_DRIVER_MAX_OPEN; i++)
 	{
-		if (m_drvObjArray[i] == NULL)
+		if (m_drvObjArray[i] == nullptr)
 		{
 			m_drvObjArray[i] = pdrvObj;
 			h = i + 1681;
@@ -121,7 +102,6 @@ long CDllDrvObj::AddDriverObject(CTouCANObj *pdrvObj)
 	}
 
 	UNLOCK_MUTEX(m_objMutex);
-
 	return h;
 }
 
@@ -135,8 +115,8 @@ CTouCANObj * CDllDrvObj::GetDriverObject(long h)
 	long idx = h - 1681;
 
 	// Check if valid handle
-	if (idx < 0) return NULL;
-	if (idx >= CANAL_TouCAN_DRIVER_MAX_OPEN) return NULL;
+	if (idx < 0) return nullptr;
+	if (idx >= CANAL_TouCAN_DRIVER_MAX_OPEN) return nullptr;
 	return m_drvObjArray[idx];
 }
 
@@ -155,10 +135,10 @@ void CDllDrvObj::RemoveDriverObject(long h)
 
 	LOCK_MUTEX(m_objMutex);
 
-	if (NULL != m_drvObjArray[idx])
+	if (nullptr != m_drvObjArray[idx])
 		delete m_drvObjArray[idx];
 
-	m_drvObjArray[idx] = NULL;
+	m_drvObjArray[idx] = nullptr;
 
 	UNLOCK_MUTEX(m_objMutex);
 }
@@ -185,23 +165,22 @@ BOOL CDllDrvObj::RemoveAllObjects()
 	for (int i = 0; i<CANAL_TouCAN_DRIVER_MAX_OPEN; i++)
 	{
 
-		if (NULL == m_drvObjArray[i])
+		if (nullptr == m_drvObjArray[i])
 		{
 
 			CTouCANObj *pdrvObj = GetDriverObject(i);
 
-			if (NULL != pdrvObj)
+			if (nullptr != pdrvObj)
 			{
 				pdrvObj->Close();
 				delete m_drvObjArray[i];
-				m_drvObjArray[i] = NULL;
+				m_drvObjArray[i] = nullptr;
 			}
 		}
 
 	}
 
 	UNLOCK_MUTEX(m_objMutex);
-
 	return TRUE;
 }
 

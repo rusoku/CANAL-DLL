@@ -3,7 +3,6 @@ MIT License
 
 Copyright (c) 2000-2023 Åke Hedman, Grodans Paradis AB
 Copyright (c) 2005-2023 Gediminas Simanskis, Rusoku technologijos UAB (gediminas@rusoku.com)
-Copyright (C) 2020 Alexander Sorokin (sorockin@yandex.ru)
 Copyright (C) 2020 Uwe Vogt (uwe.vogt@uv-software.de)
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -25,8 +24,18 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
 
-#include "stdafx.h"
+#include "windows.h"
+#include "winuser.h"
+#include "include/CTouCANobj.h"
+#include "include/utils.h"
+#include <cstring>
+#include "include/canal_macro.h"
+#include <strsafe.h>
+#include "include/debug.h"
 
+
+void workThreadTransmit(void *pObject);
+void workThreadReceive(void *pObject);
 
 CTouCANObj::CTouCANObj()
 {
@@ -42,7 +51,7 @@ CTouCANObj::CTouCANObj()
 	m_bOpen = FALSE;
 	// for treads
 	m_bRun = FALSE;
-
+	
 	// Tasks
 	m_bRunRxTask = FALSE;
 	m_bRunTxTask = FALSE;
@@ -51,19 +60,29 @@ CTouCANObj::CTouCANObj()
 	TransmitCounter = 0;
 	ReceiveCounter = 0;
 
+/*
+ *
+ *  https://learn.microsoft.com/en-us/windows/win32/sync/using-mutex-objects
+    HANDLE CreateEventA(
+    [in, optional] LPSECURITY_ATTRIBUTES lpEventAttributes,
+    [in]           BOOL                  bManualReset,
+    [in]           BOOL                  bInitialState,
+    [in, optional] LPCSTR                lpName
+    );
+*/
 	// receive list mutex
-	m_receiveListMutex = CreateMutex(NULL, FALSE, NULL);
-	m_transmitListMutex = CreateMutex(NULL, FALSE, NULL);
+	m_receiveListMutex =  CreateMutex(nullptr, FALSE, nullptr);
+	m_transmitListMutex = CreateMutex(nullptr, FALSE, nullptr);
 
 	// Events
-	m_receiveDataEvent = CreateEvent(NULL, TRUE, FALSE, NULL);
-	m_transmitDataPutEvent = CreateEvent(NULL, TRUE, TRUE, NULL);   // default: signaled
-	m_transmitDataGetEvent = CreateEvent(NULL, TRUE, FALSE, NULL);  // default: not signaled
+	m_receiveDataEvent =     CreateEvent(nullptr, TRUE, FALSE, nullptr);
+	m_transmitDataPutEvent = CreateEvent(nullptr, TRUE, TRUE, nullptr);   // default: signaled
+	m_transmitDataGetEvent = CreateEvent(nullptr, TRUE, FALSE, nullptr);  // default: not signaled
 
 #ifdef DEBUG_CANAL
 	if (!AllocConsole())
 	{
-    	MessageBox(NULL, L"The console window was not created", NULL, MB_ICONEXCLAMATION);
+    	MessageBox(nullptr, "The console window was not created", nullptr, MB_ICONEXCLAMATION);
 	}
 	freopen_s(&fp, "CONOUT$", "w", stdout); // <=-- DEBUG
 	//fopen_s(&log,"log.txt", "w+");
@@ -72,22 +91,28 @@ CTouCANObj::CTouCANObj()
 
 
 CTouCANObj::~CTouCANObj()
-{
+{	
 
 	//CloseDevice(&deviceData);
 	m_bOpen = FALSE;
 	m_bRun = FALSE;
 
 	// Mutex
-	//CloseHandle(m_receiveListMutex);
-	//CloseHandle(m_transmitListMutex);
+    if(m_receiveListMutex != nullptr)
+	    CloseHandle(m_receiveListMutex);
+
+    if(m_transmitListMutex != nullptr)
+	    CloseHandle(m_transmitListMutex);
 
 	// Events
-	//CloseHandle(m_receiveDataEvent);
-	//CloseHandle(m_transmitDataPutEvent);
-	//CloseHandle(m_transmitDataGetEvent);
+    if(m_receiveDataEvent != nullptr)
+	    CloseHandle(m_receiveDataEvent);
+    if(m_transmitDataPutEvent != nullptr)
+	    CloseHandle(m_transmitDataPutEvent);
+    if(m_transmitDataGetEvent != nullptr)
+	    CloseHandle(m_transmitDataGetEvent);
 
-	//delete pDllList;
+    delete pDllList;
 
 #ifdef DEBUG_CANAL
 //	fclose(fp);
@@ -111,133 +136,117 @@ CTouCANObj::~CTouCANObj()
 bool CTouCANObj::Open(const char * szFileName, unsigned long flags, bool start) {
 
 	HRESULT   hr;
-	WCHAR	szDrvParams[256];
-	LPWSTR	szDrvParamsToken;
-	LPWSTR  token;
-	LPWSTR	pEnd; // wcstol()
+	TCHAR	szDrvParams[256];
+	LPTSTR	szDrvParamsToken;
+	LPTSTR  token;
+	LPTSTR	pEnd; // wcstol()
 
 	// if open we have noting to do
 	if (m_bOpen == TRUE)
 		return FALSE;
 
-	if (NULL == szFileName)
+	if (nullptr == szFileName)
 		return FALSE;
 
-	// Intin string not more 100 symbols
-	if (strlen(szFileName) > 100)
+	// Init string not more than 100 symbols
+	if (strlen(szFileName) > sizeof(szDrvParams)/sizeof(szDrvParams[0]))
 		return FALSE;
 
 	// convert configuration string to UNICODE
-	MultiByteToWideChar(CP_UTF8, 0, szFileName, -1, szDrvParams, 256);
+    StringCbCopyA(szDrvParams, sizeof(szDrvParams) / sizeof(szDrvParams[0]), szFileName);
 
 	// clean whitespace characters
-	MyStrTrim(szDrvParams);
+	StringTrim(szDrvParams);
 
 	//------------------ Device ID --------------------------
 
 	//Looking for "Device ID"
-	//szDrvParamsToken = wcstok_s(NULL, L";", &token);
-	szDrvParamsToken = wcstok_s(szDrvParams, L";", &token);
-	//wprintf(L"String Speed=%s\n", szDrvParamsToken);
+	szDrvParamsToken = strtok_s(szDrvParams, ";", &token);
 
-	// wrong init string format "Device ID"
-	if (szDrvParamsToken == NULL)
+	// wrong init string format "Device ID" 
+	if (szDrvParamsToken == nullptr)
 		return FALSE;
 
 	// Convert to integer "Device ID"
-	m_DeviceId = (INT16)wcstol(szDrvParamsToken, &pEnd, 10);
-	//	wprintf(L"m_DeviceId=%d\n", m_DeviceId);
+	m_DeviceId = (INT16)strtoul(szDrvParamsToken, &pEnd, 10);
 
 	//------------------ serial number ------------------
 
-		// Looking for "serial number"
-		//szDrvParamsToken = wcstok_s(szDrvParams, L";", &token);
-	szDrvParamsToken = wcstok_s(NULL, L";", &token);
-	//wprintf(L"SerialNumber=%s\n", szDrvParamsToken);
+	// Looking for "serial number"
+	szDrvParamsToken = strtok_s(nullptr, ";", &token);
 
-	// wrong init string format "serial number"
-	if (szDrvParamsToken == NULL)
+	// wrong init string format "serial number" 
+	if (szDrvParamsToken == nullptr)
 		return FALSE;
 
 	// "serial number" length must be 8 symbols
-	if (wcslen(szDrvParamsToken) != 8)
+	if (strlen(szDrvParamsToken) != 8)
 		return FALSE;
 
 	// Coping "serial number"
-	if ((wcscpy_s(m_SerialNumber, sizeof(m_SerialNumber), szDrvParamsToken)) != 0)
-		return FALSE;
+    StringCbCopyA(m_SerialNumber, sizeof(m_SerialNumber) / sizeof(m_SerialNumber[0]), szDrvParamsToken);
 
 	//------------------ speed --------------------------
 
 		//Looking for "speed"
-	szDrvParamsToken = wcstok_s(NULL, L";", &token);
-	//wprintf(L"String Speed=%s\n", szDrvParamsToken);
+	szDrvParamsToken = strtok_s(nullptr, ";", &token);
 
-	// wrong init string format "speed"
-	if (szDrvParamsToken == NULL)
+	// wrong init string format "speed" 
+	if (szDrvParamsToken == nullptr)
 		return FALSE;
 
 	// Convert to integer "speed"
-	m_Speed = (INT16)wcstol(szDrvParamsToken, &pEnd, 10);
-	//wprintf(L"Converted Speed=%d\n", m_Speed);
+	m_Speed = (INT16)strtoul(szDrvParamsToken, &pEnd, 10);
 
 //------------------ ext parameters if(speed == 0) ------------------
 	if (m_Speed == 0) {
 		//------------------------------ Tseg1 -------------------------------
 
 				//Looking for "tseg1"
-		szDrvParamsToken = wcstok_s(NULL, L";", &token);
-		//wprintf(L"String tseg1=%s\n", szDrvParamsToken);
+		szDrvParamsToken = strtok_s(nullptr, ";", &token);
 
-		// wrong init string format "Tseg1"
-		if (szDrvParamsToken == NULL)
+		// wrong init string format "Tseg1" 
+		if (szDrvParamsToken == nullptr)
 			return FALSE;
 
 		// Convert to integer "Tseg1"
-		m_Tseg1 = (INT8)wcstol(szDrvParamsToken, &pEnd, 10);
-		//wprintf(L"Converted Tseg1=%d\n", m_Tseg1);
+		m_Tseg1 = (INT8)strtoul(szDrvParamsToken, &pEnd, 10);
 
 //---------------------------- Tseg2 ---------------------------------
 
 		//Looking for "tseg2"
-		szDrvParamsToken = wcstok_s(NULL, L";", &token);
-		//wprintf(L"String Tseg2=%s\n", szDrvParamsToken);
+		szDrvParamsToken = strtok_s(nullptr, ";", &token);
 
-		// wrong init string format "Tseg2"
-		if (szDrvParamsToken == NULL)
+		// wrong init string format "Tseg2" 
+		if (szDrvParamsToken == nullptr)
 			return FALSE;
 
 		// Convert to integer "Tseg2"
-		m_Tseg2 = (INT8)wcstol(szDrvParamsToken, &pEnd, 10);
-		//wprintf(L"Converted Tseg2=%d\n", m_Tseg2);
+		m_Tseg2 = (INT8)strtoul(szDrvParamsToken, &pEnd, 10);
 
 //--------------------------- Sjw -------------------------------------
 
 		//Looking for "Sjw"
-		szDrvParamsToken = wcstok_s(NULL, L";", &token);
-		//wprintf(L"String Sjw=%s\n", szDrvParamsToken);
+		szDrvParamsToken = strtok_s(nullptr, ";", &token);
 
-		// wrong init string format "Sjw"
-		if (szDrvParamsToken == NULL)
+		// wrong init string format "Sjw" 
+		if (szDrvParamsToken == nullptr)
 			return FALSE;
 
 		// Convert to integer "Sjw"
-		m_Sjw = (INT8)wcstol(szDrvParamsToken, &pEnd, 10);
-		//wprintf(L"Converted Sjw=%d\n", m_Sjw);
+		m_Sjw = (INT8)strtoul(szDrvParamsToken, &pEnd, 10);
 
 //--------------------------- Brp -------------------------------------
 
 		//Looking for "Brp"
-		szDrvParamsToken = wcstok_s(NULL, L";", &token);
-		//wprintf(L"String Brp=%s\n", szDrvParamsToken);
+		szDrvParamsToken = strtok_s(nullptr, ";", &token);
 
-		// wrong init string format "Brp"
-		if (szDrvParamsToken == NULL)
+		// wrong init string format "Brp" 
+		if (szDrvParamsToken == nullptr)
 			return FALSE;
 
 		// Convert to integer "Brp"
-		m_Brp = (INT16)wcstol(szDrvParamsToken, &pEnd, 10);
-		//wprintf(L"Converted Brp=%d\n", m_Brp);
+		m_Brp = (INT16)strtoul(szDrvParamsToken, &pEnd, 10);
 	}
 	else {  //if (m_Speed == 0)
 
@@ -306,13 +315,13 @@ bool CTouCANObj::Open(const char * szFileName, unsigned long flags, bool start) 
 		}
 	}
 
-	if ((m_Tseg1 < 1) || (m_Tseg1 > 16))
+	if ((m_Tseg1 < 1) | (m_Tseg1 > 16))
 		return FALSE;
 
-	if ((m_Tseg2 < 1) || (m_Tseg2 > 8))
+	if ((m_Tseg2 < 1) | (m_Tseg2 > 8))
 		return FALSE;
 
-	if ((m_Sjw < 1) || (m_Sjw > 4))
+	if ((m_Sjw < 1) | (m_Sjw > 4))
 		return FALSE;
 
 	if (m_Brp > 1024)
@@ -320,25 +329,16 @@ bool CTouCANObj::Open(const char * szFileName, unsigned long flags, bool start) 
 
 	m_OptionFlag = flags;
 
-	//wprintf(L"\n==================================\n");
-	//wprintf(L"Tseg1=%d\n", m_Tseg1);
-	//wprintf(L"Tseg2=%d\n", m_Tseg2);
-	//wprintf(L"Sjw=%d\n", m_Sjw);
-	//wprintf(L"Brp=%d\n", m_Brp);
-	//wprintf(L"flags=%d\n", m_OptionFlag);
-
 //------------------------ Find WinUSB TouCAN device ----------------------------
 	hr = OpenDevice(&deviceData, &noDevice, m_SerialNumber);
 
-	if (FAILED(hr))
-		if (noDevice) {
-			//wprintf(L"Device not connected or driver not installed\n");
-			return FALSE;
-		}
-		else {
-			//wprintf(L"Failed looking for device, HRESULT 0x%x\n", hr);
-			return FALSE;
-		}
+	if (FAILED(hr)) {
+        return FALSE;
+    }
+
+	if (noDevice) {
+        return FALSE;
+    }
 
 	// check is it our DeviceId or not
 	UINT32   dev_id;
@@ -346,7 +346,6 @@ bool CTouCANObj::Open(const char * szFileName, unsigned long flags, bool start) 
 
 	if (dev_id != m_DeviceId)
 	{
-		//wprintf(L"TouCAN_DEV_ID_ERROR\n");
 		CloseDevice(&deviceData);
 		m_bOpen = FALSE;
 		return FALSE;
@@ -359,20 +358,19 @@ bool CTouCANObj::Open(const char * szFileName, unsigned long flags, bool start) 
 	m_bRunRxTask = TRUE;
 	m_bRunTxTask = TRUE;
 
-	if (NULL == (m_hTreadReceive = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)workThreadReceive, this, 0, NULL)))
+	if (nullptr == (m_hTreadReceive = CreateThread(nullptr, 0, (LPTHREAD_START_ROUTINE)workThreadReceive, this, 0, nullptr)))
 	{
 		return FALSE;
 	}
 
-	if (NULL == (m_hTreadTransmit = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)workThreadTransmit, this, 0, NULL)))
+	if (nullptr == (m_hTreadTransmit = CreateThread(nullptr, 0, (LPTHREAD_START_ROUTINE)workThreadTransmit, this, 0, nullptr)))
 	{
 		return FALSE;
 	}
 
-	SetThreadPriority(m_hTreadReceive, THREAD_PRIORITY_TIME_CRITICAL);
-	SetThreadPriority(m_hTreadTransmit, THREAD_PRIORITY_TIME_CRITICAL);
-
-	Sleep(100);
+	//SetThreadPriority(m_hTreadReceive, THREAD_PRIORITY_TIME_CRITICAL);
+	//SetThreadPriority(m_hTreadTransmit, THREAD_PRIORITY_TIME_CRITICAL);
+	//Sleep(100);
 
 	pDllList->RemoveAllNodes(&m_receiveList);
 	pDllList->RemoveAllNodes(&m_transmitList);
@@ -382,14 +380,12 @@ bool CTouCANObj::Open(const char * szFileName, unsigned long flags, bool start) 
 
 	if (state == HAL_CAN_STATE_READY)
 	{
-		//wprintf(L"state:HAL_CAN_STATE_READY\n");
 		TouCAN_stop();
 		TouCAN_deinit();
 	}
 
 	if (state == HAL_CAN_STATE_LISTENING)
 	{
-		//wprintf(L"state:HAL_CAN_STATE_LISTENING\n");
 		TouCAN_stop();
 		TouCAN_deinit();
 	}
@@ -397,8 +393,6 @@ bool CTouCANObj::Open(const char * szFileName, unsigned long flags, bool start) 
 	//  TouCAN initialisation
 	if (TouCAN_init() == FALSE)
 	{
-		//wprintf(L"TouCAN_init ERROR\n");
-		TerminateThreads();
 		CloseDevice(&deviceData);
 		m_bOpen = FALSE;
 		return FALSE;
@@ -409,8 +403,6 @@ bool CTouCANObj::Open(const char * szFileName, unsigned long flags, bool start) 
 	{
 		if (TouCAN_start() == FALSE)
 		{
-			//wprintf(L"TouCAN_start ERROR\n");
-			TerminateThreads();
 			CloseDevice(&deviceData);
 			m_bOpen = FALSE;
 			return FALSE;
@@ -421,38 +413,10 @@ bool CTouCANObj::Open(const char * szFileName, unsigned long flags, bool start) 
 }
 
 //////////////////////////////////////////////////////////////////////
-// TerminateThreads
-//
-void CTouCANObj::TerminateThreads(void) {
-	DWORD rv = ERROR_INVALID_PARAMETER;
-
-	// Terminate Rx Thread
-	m_bRunRxTask = FALSE;
-	// Terminate Rx Thread
-	m_bRunTxTask = FALSE;
-
-	while (true)
-	{
-		GetExitCodeThread(m_hTreadReceive, &rv);
-		if (rv != STILL_ACTIVE)
-			break;
-	}
-	//wprintf(L"GetExitCodeReceiveThread=%X\n", rv);
-
-	while (true)
-	{
-		GetExitCodeThread(m_hTreadTransmit, &rv);
-		if (rv != STILL_ACTIVE)
-			break;
-	}
-	//wprintf(L"GetExitCodeTransmitThread=%X\n", rv);
-}
-
-//////////////////////////////////////////////////////////////////////
 // Close
 //
 
-bool CTouCANObj::Close(void){
+bool CTouCANObj::Close(){
 
 	DWORD rv = ERROR_INVALID_PARAMETER;
 
@@ -460,13 +424,30 @@ bool CTouCANObj::Close(void){
 	TouCAN_stop();
 	//  TouCAN initialisation
 	TouCAN_deinit();
-
+	
 	Sleep(100);
 
+	// Terminate Rx Thread
+	m_bRunRxTask = FALSE;
+	// Terminate Rx Thread
+	m_bRunTxTask = FALSE;
+	
 	m_bOpen = FALSE;
 	m_bRun = FALSE;
 
-	TerminateThreads();
+	while (true)
+	{
+		GetExitCodeThread(m_hTreadReceive, &rv);
+		if (rv != STILL_ACTIVE)
+			break;
+	}
+
+	while (true)
+	{
+		GetExitCodeThread(m_hTreadTransmit, &rv);
+		if (rv != STILL_ACTIVE)
+			break;
+	}
 
 	CloseDevice(&deviceData);
 
@@ -476,7 +457,7 @@ bool CTouCANObj::Close(void){
 	return TRUE;
 }
 
-bool CTouCANObj::Start(void)
+bool CTouCANObj::Start()
 {
 	// Must be open
 	if (m_bOpen == FALSE)
@@ -485,7 +466,7 @@ bool CTouCANObj::Start(void)
 	return TouCAN_start();
 }
 
-bool CTouCANObj::Stop(void)
+bool CTouCANObj::Stop()
 {
 	// Must be open
 	if (m_bOpen == FALSE)
@@ -500,7 +481,7 @@ bool CTouCANObj::Stop(void)
 
 bool CTouCANObj::SetFilter(unsigned long filter)
 {
-	//m_filter = filter;
+	m_filter = filter;
 
 	// Must be open
 	if (m_bOpen == FALSE)
@@ -514,7 +495,7 @@ bool CTouCANObj::SetFilter(unsigned long filter)
 
 bool CTouCANObj::SetMask(unsigned long mask)
 {
-	//m_mask = mask;
+	m_mask = mask;
 
 	 //Must be open
 	  if (m_bOpen == FALSE)
@@ -576,7 +557,7 @@ int CTouCANObj::GetStatistics(PCANALSTATISTICS pCanalStatistics)
 		return CANAL_ERROR_HARDWARE;
 
 	// Must be a message pointer
-	if (NULL == pCanalStatistics)
+	if (nullptr == pCanalStatistics)
 		return CANAL_ERROR_PARAMETER;
 
 	ReceiveCounter = 0;
@@ -589,8 +570,6 @@ int CTouCANObj::GetStatistics(PCANALSTATISTICS pCanalStatistics)
 
 	*pCanalStatistics = m_statistics;
 
-	//wprintf(L"Bus off=%08X\n", m_statistics.cntBusOff);
-
 	return CANAL_ERROR_SUCCESS;
 }
 
@@ -598,13 +577,13 @@ int CTouCANObj::GetStatistics(PCANALSTATISTICS pCanalStatistics)
 //	dataAvailable
 //
 
-int CTouCANObj::DataAvailable(void)
-{
+int CTouCANObj::DataAvailable()
+{	
     //Must be open
 	if (!m_bOpen) return 0;
 	if (!m_bRun) return 0;
 
-	return  m_receiveList.nCount;
+	return  (int)m_receiveList.nCount;
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -616,7 +595,7 @@ int CTouCANObj::GetStatus(PCANALSTATUS pCanalStatus)
 	canalStatus   status;
 
 	// Must be a message pointer
-	if (NULL == pCanalStatus)
+	if (nullptr == pCanalStatus)
 		return CANAL_ERROR_PARAMETER;
 
 	// Must be open
@@ -626,9 +605,9 @@ int CTouCANObj::GetStatus(PCANALSTATUS pCanalStatus)
 	if (!m_bRun)
 		return CANAL_ERROR_HARDWARE;
 
-	if (TouCAN_get_canal_status(&status) != TRUE)
+	if (TouCAN_get_canal_status(&status) != TRUE)	
 		return	CANAL_ERROR_COMMUNICATION;
-
+	
 	*pCanalStatus = status;
 
 	return CANAL_ERROR_SUCCESS;
@@ -641,7 +620,7 @@ int CTouCANObj::GetStatus(PCANALSTATUS pCanalStatus)
 int CTouCANObj::ReadMsg(canalMsg *pMsg)
 {
 	// Must be a message pointer
-	if (NULL == pMsg)
+	if (nullptr == pMsg)
 		return CANAL_ERROR_PARAMETER;
 
 	// Must be open
@@ -657,14 +636,12 @@ int CTouCANObj::ReadMsg(canalMsg *pMsg)
 	if (m_bRunRxTask != TRUE)
 		return CANAL_ERROR_HARDWARE;
 
-	LOCK_MUTEX(m_receiveListMutex);
+	LOCK_MUTEX(m_receiveListMutex);	
 	memcpy_s(pMsg, sizeof(canalMsg), m_receiveList.pHead->pObject, sizeof(canalMsg));
 	pDllList->RemoveNode(&m_receiveList, m_receiveList.pHead);
 	UNLOCK_MUTEX(m_receiveListMutex);
 
 	ResetEvent(m_receiveDataEvent);
-
-	//wprintf(L"Counter=%d\n", ++counter);
 
 	return CANAL_ERROR_SUCCESS;
 }
@@ -681,7 +658,7 @@ int CTouCANObj::ReadMsgBlocking(canalMsg *pMsg, ULONG	 Timeout)
 	//DWORD res;
 
 	// Must be a message pointer
-	if (NULL == pMsg)
+	if (nullptr == pMsg)
 		return CANAL_ERROR_PARAMETER;
 
 	// Must be open
@@ -690,10 +667,6 @@ int CTouCANObj::ReadMsgBlocking(canalMsg *pMsg, ULONG	 Timeout)
 
 	if (!m_bRun)
 		return CANAL_ERROR_HARDWARE;
-
-	// Must be a message pointer
-	if (NULL == pMsg)
-		return CANAL_ERROR_PARAMETER;
 
 	// Must be open
 	if (!m_bOpen)
@@ -707,26 +680,16 @@ int CTouCANObj::ReadMsgBlocking(canalMsg *pMsg, ULONG	 Timeout)
 	{
 		if (WaitForSingleObject(m_receiveDataEvent, Timeout) != WAIT_OBJECT_0)
 			return  CANAL_ERROR_TIMEOUT;
-		//
-		//if( res != )
-/*
-		if (res == WAIT_TIMEOUT)
-			return CANAL_ERROR_TIMEOUT;
-		else if (res == WAIT_ABANDONED)
-			return CANAL_ERROR_GENERIC;
-*/
 	}
 
 	if (m_receiveList.nCount > 0)
 	{
-		LOCK_MUTEX(m_receiveListMutex);
+		LOCK_MUTEX(m_receiveListMutex);		
 		memcpy_s(pMsg, sizeof(canalMsg), m_receiveList.pHead->pObject, sizeof(canalMsg));
 		pDllList->RemoveNode(&m_receiveList, m_receiveList.pHead);
         UNLOCK_MUTEX(m_receiveListMutex);
 
 		ResetEvent(m_receiveDataEvent);
-		//wprintf(L"ReceiveCounter=%I64d\n", ++ReceiveCounter);
-		//wprintf(L"============== Received Message ===============\n");
 	}
 	else
 		return  CANAL_ERROR_FIFO_EMPTY;
@@ -742,10 +705,9 @@ int CTouCANObj::ReadMsgBlocking(canalMsg *pMsg, ULONG	 Timeout)
 int CTouCANObj::WriteMsg(canalMsg *pMsg)
 {
 	ULONG  cnt;
-	DWORD res;
 
 	// Must be a message pointer
-	if (NULL == pMsg)
+	if (nullptr == pMsg)
 		return CANAL_ERROR_PARAMETER;
 
 	//Must be open
@@ -761,42 +723,22 @@ int CTouCANObj::WriteMsg(canalMsg *pMsg)
 	UNLOCK_MUTEX(m_transmitListMutex);
 
 	if (cnt >= TouCAN_MAX_FIFO)
-	{
-	//wprintf(L"FIFO FULL\n");
-	return CANAL_ERROR_FIFO_FULL;
-    }
+	    return CANAL_ERROR_FIFO_FULL;
 
-	 dllnode *pNode = new dllnode;
-	 if (NULL == pNode)
-		 return CANAL_ERROR_MEMORY;
+	auto pNode = new dllnode;
+	auto pcanalMsg = new canalMsg;
 
-	 canalMsg *pcanalMsg = new canalMsg;
-	 if (NULL == pcanalMsg)
-	 {
-		 delete pNode;
-		 return CANAL_ERROR_MEMORY;
-	 }
+	pNode->pObject = pcanalMsg;
+	pNode->pKey = nullptr;
+	pNode->pstrKey = nullptr;
 
-	 pNode->pObject = pcanalMsg;
-	 pNode->pKey = NULL;
-	 pNode->pstrKey = NULL;
+	memcpy_s(pcanalMsg, sizeof(canalMsg), pMsg, sizeof(canalMsg));
 
-	 memcpy_s(pcanalMsg, sizeof(canalMsg), pMsg, sizeof(canalMsg));
+	LOCK_MUTEX(m_transmitListMutex);
+	pDllList->AddNode(&m_transmitList, pNode);
+	UNLOCK_MUTEX(m_transmitListMutex);
 
-	 LOCK_MUTEX(m_transmitListMutex);
-	 res = pDllList->AddNode(&m_transmitList, pNode);
-	 UNLOCK_MUTEX(m_transmitListMutex);
-
-	 //wprintf(L"ADDED TO LIST\n");
-
-	 if (res != TRUE)
-	 {
-		 delete pNode;
-		 delete pcanalMsg;
-		 return CANAL_ERROR_MEMORY;
-	 }
-
-	 SetEvent(m_transmitDataGetEvent);
+    SetEvent(m_transmitDataGetEvent);
 
 	return CANAL_ERROR_SUCCESS;
 }
@@ -811,7 +753,7 @@ int CTouCANObj::WriteMsgBlocking(canalMsg *pMsg, ULONG Timeout)
 	ULONG cnt;
 
 	// Must be a message pointer
-	if (NULL == pMsg)
+	if (nullptr == pMsg)
 		return CANAL_ERROR_PARAMETER;
 
 	// Must be open
@@ -829,8 +771,6 @@ int CTouCANObj::WriteMsgBlocking(canalMsg *pMsg, ULONG Timeout)
 	//cnt = pDllList->GetNodeCount(&m_transmitList); //too slow
 	cnt = m_transmitList.nCount;
 	UNLOCK_MUTEX(m_transmitListMutex);
-
-	//wprintf(L"FIFO CNT=%d\n", cnt);
 
 	if(cnt >= TouCAN_MAX_FIFO)
 	{
@@ -850,25 +790,17 @@ int CTouCANObj::WriteMsgBlocking(canalMsg *pMsg, ULONG Timeout)
 	}
 
 	dllnode *pNode = new dllnode;
-	if (NULL == pNode)
-		return CANAL_ERROR_MEMORY;
-
 	canalMsg *pcanalMsg = new canalMsg;
-	if (NULL == pcanalMsg)
-	{
-		delete pNode;
-		return CANAL_ERROR_MEMORY;
-	}
 
 	pNode->pObject = pcanalMsg;
-	pNode->pKey = NULL;
-	pNode->pstrKey = NULL;
+	pNode->pKey = nullptr;
+	pNode->pstrKey = nullptr;
 	memcpy_s(pcanalMsg, sizeof(canalMsg), pMsg, sizeof(canalMsg));
 
 	// get NodeCount once again
 	LOCK_MUTEX(m_transmitListMutex);
 	//cnt = pDllList->GetNodeCount(&m_transmitList); //too slow
-	cnt = m_transmitList.nCount;
+	cnt = m_transmitList.nCount; 
 	UNLOCK_MUTEX(m_transmitListMutex);
 
 	if (cnt >= TouCAN_MAX_FIFO)
@@ -877,13 +809,11 @@ int CTouCANObj::WriteMsgBlocking(canalMsg *pMsg, ULONG Timeout)
 		delete pcanalMsg;
 		return  CANAL_ERROR_FIFO_FULL;
 	}
-
+	
 
 	LOCK_MUTEX(m_transmitListMutex);
 	res = pDllList->AddNode(&m_transmitList, pNode);
 	UNLOCK_MUTEX(m_transmitListMutex);
-
-	//wprintf(L"ADDED TO LIST\n");
 
 	if (res != TRUE)
 	{
@@ -902,31 +832,25 @@ int CTouCANObj::WriteMsgBlocking(canalMsg *pMsg, ULONG Timeout)
 // writeMsg blocking
 //
 
-char* CTouCANObj::GetVendorString(void)
+char* CTouCANObj::GetVendorString()
 {
-	CHAR	 Vendor[256];
+	TCHAR	 Vendor[256];
 	UINT32	 HardwareVersion;
-	CHAR	 HardwareVersionStr[256];
+	TCHAR	 HardwareVersionStr[256];
 	UINT32   FirmwareVersion;
-	CHAR     FirmwareVersionStr[256];
-	static CHAR	 str[256];
+	TCHAR     FirmwareVersionStr[256];
+	static  TCHAR 	 str[256];
 
 	memset(str, 0, 255);
 
-	// Must be open
+	// Must be open	
 	if (!m_bOpen)
 		return str;
 
 	TouCAN_get_hardware_version(&HardwareVersion);
-	//wprintf(L"Hardware version= %08X\n", HardwareVersion);
-
 	TouCAN_get_firmware_version(&FirmwareVersion);
-	//wprintf(L"Firmware version= %08X\n", FirmwareVersion);
-
 	TouCAN_get_vendor(256, Vendor);
-	//wprintf(L"VENDOR ID= %S\n", Vendor);
 
-	//sprintf_s(HardwareVersionStr, sizeof(str), "%d",(UINT8) HardwareVersion);
 	sprintf_s(HardwareVersionStr, sizeof(str), "%d.%d.%d", (UINT8)(HardwareVersion >> 24), (UINT8)(HardwareVersion >> 16), (UINT8)(HardwareVersion >> 8));
 	sprintf_s(FirmwareVersionStr, sizeof(str), "%d.%d.%d", (UINT8)(FirmwareVersion >> 24), (UINT8)(FirmwareVersion >> 16), (UINT8)(FirmwareVersion >> 8));
 
@@ -947,7 +871,7 @@ int CTouCANObj::GetBootloaderVersion(unsigned long *version)
 	UINT32 ver = 0;
 
 	// Must be a message pointer
-	if (NULL == version)
+	if (nullptr == version)
 		return CANAL_ERROR_PARAMETER;
 
 	// Must be open
@@ -957,12 +881,10 @@ int CTouCANObj::GetBootloaderVersion(unsigned long *version)
 	if (!m_bRun)
 		return CANAL_ERROR_HARDWARE;
 
-	if (TouCAN_get_bootloader_version(&ver) != TRUE)
+	if (TouCAN_get_bootloader_version(&ver) != TRUE)	
 		return	CANAL_ERROR_COMMUNICATION;
-
+	
 	*version = ver;
-	//wprintf(L"Bootloader version= %08X\n", ver);
-
 	return CANAL_ERROR_SUCCESS;
 }
 
@@ -975,7 +897,7 @@ int CTouCANObj::GetHardwareVersion(unsigned long * version)
 	UINT32 ver = 0;
 
 	// Must be a message pointer
-	if (NULL == version)
+	if (nullptr == version)
 		return CANAL_ERROR_PARAMETER;
 
 	// Must be open
@@ -1000,7 +922,7 @@ int CTouCANObj::GetFirmwareVersion(unsigned long * version)
 	UINT32 ver = 0;
 
 	// Must be a message pointer
-	if (NULL == version)
+	if (nullptr == version)
 		return CANAL_ERROR_PARAMETER;
 
 	// Must be open
@@ -1024,7 +946,7 @@ int CTouCANObj::GetSerialNumber(unsigned long * serial)
 	UINT32 ver = 0;
 
 	// Must be a message pointer
-	if (NULL == serial)
+	if (nullptr == serial)
 		return CANAL_ERROR_PARAMETER;
 
 	// Must be open
@@ -1047,7 +969,7 @@ int CTouCANObj::GetVidPid(unsigned long * vidpid)
 	UINT32 ver = 0;
 
 	// Must be a message pointer
-	if (NULL == vidpid)
+	if (nullptr == vidpid)
 		return CANAL_ERROR_PARAMETER;
 
 	// Must be open
@@ -1070,7 +992,7 @@ int CTouCANObj::GetDeviceId(unsigned long * devid)
 	UINT32 ver = 0;
 
 	// Must be a message pointer
-	if (NULL == devid)
+	if (nullptr == devid)
 		return CANAL_ERROR_PARAMETER;
 
 	// Must be open
@@ -1088,12 +1010,12 @@ int CTouCANObj::GetDeviceId(unsigned long * devid)
 	return CANAL_ERROR_SUCCESS;
 }
 
-int CTouCANObj::GetVendor(unsigned int size, char * vendor)
+int CTouCANObj::GetVendor(unsigned int size, char* vendor)
 {
-	CHAR	 local_vendor[256];
+	TCHAR local_vendor[256];
 
 	// Must be a message pointer
-	if (NULL == vendor)
+	if (nullptr == vendor)
 		return CANAL_ERROR_PARAMETER;
 
 	// Must be a message pointer
@@ -1117,7 +1039,7 @@ int CTouCANObj::GetVendor(unsigned int size, char * vendor)
 
 //int InterfaceStart(void);
 
-int CTouCANObj::InterfaceStart(void)
+int CTouCANObj::InterfaceStart()
 {
 
 	// Must be open
@@ -1134,7 +1056,7 @@ int CTouCANObj::InterfaceStart(void)
 }
 
 
-int CTouCANObj::InterfaceStop(void)
+int CTouCANObj::InterfaceStop()
 {
 	// Must be open
 	if (!m_bOpen)
@@ -1147,9 +1069,10 @@ int CTouCANObj::InterfaceStop(void)
 		return	CANAL_ERROR_COMMUNICATION;
 
     // signal blocking reception event
-    if (m_receiveDataEvent != NULL)
-        (void)SetEvent(m_receiveDataEvent);
-    
-    return CANAL_ERROR_SUCCESS;
+    if (m_receiveDataEvent != nullptr) {
+        (void) SetEvent(m_receiveDataEvent);
+    }
+
+	return CANAL_ERROR_SUCCESS;
 }
 

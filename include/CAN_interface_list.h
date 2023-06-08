@@ -23,26 +23,46 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
 
-#ifdef WIN32
+#pragma once
 
-#define LOCK_MUTEX( x )		( WaitForSingleObject( x, INFINITE ) )
-#define UNLOCK_MUTEX( x )	( ReleaseMutex( x ) )
-#define SLEEP( x )			( Sleep( x ) )
-#define SYSLOG( a, b )		( wxLogError( b ) )
-#define BZERO( a )			( memset( ( _u8* )&a, 0, sizeof( a ) ) )	
+#include <windows.h>
 
-#else
+#define TOTAL_DEVICES_AVAILABLE 8
 
-#define LOCK_MUTEX( x )		( pthread_mutex_lock( &x ) )
-#define UNLOCK_MUTEX( x )	( pthread_mutex_unlock( &x ) )
-#define SLEEP( x )			( usleep( ( 1000 * x ) ) )
-#define SYSLOG( a, b )		( syslog( a, b ) )
-#define BZERO( a )			( bzero( ( _u8* )&a, sizeof( a ) ) )
+struct CAN_DEV_INFO{
+    TCHAR   DeviceType[64];
+    TCHAR   uuid[64];
+    UINT16  vid;
+    UINT16  pid;
+    TCHAR   SerialNumber[64];
+};
 
+struct CAN_DEV_LIST{
+    struct CAN_DEV_INFO canDevInfo[TOTAL_DEVICES_AVAILABLE];
+    UINT8   canDevCount;
+};
+
+
+/*
+typedef struct _GUID {
+    unsigned long  Data1;
+    unsigned short Data2;
+    unsigned short Data3;
+    unsigned char  Data4[8];
+} GUID;
+*/
+
+//DEFINE_GUID(GUID_INTERFACE_WinUsbF4FS1,
+//            0xFD361109, 0x858D, 0x4F6F, 0x81, 0xEE, 0xAA, 0xB5, 0xD6, 0xCB, 0xF0, 0x6B);
+
+#ifdef __cplusplus
+extern "C"
+{
 #endif
 
+DWORD CAN_interface_list(struct CAN_DEV_LIST* canDeviceList);
 
-#define MAX( a, b )	( ( (a) > (b) ) ? (a) : (b) )
-#define MIN( a, b )	( ( (a) < (b) ) ? (a) : (b) )
-#define ABS( a )	(( (int) (a) < 0 ) ? ((a) ^ 0xffffffff) + 1 : (a) )
+#ifdef __cplusplus
+}
+#endif
 
