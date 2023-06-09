@@ -282,8 +282,7 @@ BOOL CDllList::RemoveNode(struct DoubleLinkedList *pdll, struct dllnode *pNode)
 		if (nullptr != pNode->pObject) {
             //auto pobj = pNode->pObject;
             //delete pobj;
-            delete  pNode->pObject;
-			delete pNode->pObject;
+            delete  pNode->pObject
 			pNode->pObject = nullptr;
 		}
 
