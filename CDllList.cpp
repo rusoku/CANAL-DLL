@@ -25,6 +25,7 @@ SOFTWARE.
 
 #include "windows.h"
 #include "include/CDllList.h"
+#include "include/canal.h"
 
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -280,9 +281,7 @@ BOOL CDllList::RemoveNode(struct DoubleLinkedList *pdll, struct dllnode *pNode)
 
 		// Remove the object
 		if (nullptr != pNode->pObject) {
-            //auto pobj = pNode->pObject;
-            //delete pobj;
-            delete  pNode->pObject
+            delete static_cast<canalMsg*> (pNode->pObject);
 			pNode->pObject = nullptr;
 		}
 
