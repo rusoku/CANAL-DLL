@@ -22,7 +22,7 @@ if(CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
     add_compile_options(-Wno-unused-parameter)
 endif()
 
-if(${CMAKE_BUILD_TYPE} STREQUAL "Debug")
+if(CMAKE_BUILD_TYPE STREQUAL "Debug")
     #add_compile_definitions(canal DEBUG_CANAL)
 endif()
 
