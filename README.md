@@ -24,6 +24,8 @@ download CMAKE from: https://cmake.org/download/
 
 install CMAKE to anywhere
 
+download & install Windows SDK: https://developer.microsoft.com/en-us/windows/downloads/windows-sdk/
+
 clone CANAL DLL source code from:
 
 git clone https://github.com/rusoku/CANAL-DLL
